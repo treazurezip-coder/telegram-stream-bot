@@ -1,0 +1,6 @@
+[build]
+builder="NIXPACKS"
+[phases.setup]
+nixPkgs=["python311"]
+[start]
+cmd="python telegrambot.py"
