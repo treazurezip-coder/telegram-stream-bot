@@ -278,7 +278,11 @@ async def on_startup(app):
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
-
+app.add_handler(CommandHandler("notifyspotify", notifyspotify))
+app.add_handler(CommandHandler("notifyyoutube", notifyyoutube))
+app.add_handler(CommandHandler("notifygenie", notifygenie))
+app.add_handler(CommandHandler("leaderboard", leaderboard))
+app.add_handler(CommandHandler("resetleaderboard", resetleaderboard)) 
 app.add_handler(CommandHandler("joinspotify", joinspotify))
 app.add_handler(CommandHandler("joingenie", joingenie))
 app.add_handler(CommandHandler("joinyoutube", joinyoutube))
