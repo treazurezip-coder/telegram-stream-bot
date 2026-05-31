@@ -23,7 +23,13 @@ teams = {
 checkin_count = {}
 last_checkin_time = {}
 
-COOLDOWN = 60 * 30  # 30 minutes
+ADMINS = {
+8117134987
+}
+
+BATCH_SIZE = 20
+
+COOLDOWN = 60 * 10  # 10 minutes
 
 # =========================
 # TOPIC IDS
@@ -89,6 +95,67 @@ async def checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🙏 Thank you @{user.username or user.first_name}\n"
         f"🎬 Streams: #{checkin_count[user.id]}"
     )
+
+async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+spotify_board = generate_leaderboard(“spotify”)
+youtube_board = generate_leaderboard(“youtube”)
+await update.message.reply_text(
+    spotify_board + "\n\n" + youtube_board
+)
+async def resetleaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+if not is_admin(update.effective_user.id):
+await update.message.reply_text(“❌ Admin-only command.”)
+return
+checkin_count.clear()
+last_checkin_time.clear()
+
+await update.message.reply_text(
+    "✅ Leaderboard reset."
+)
+def build_hidden_mentions(user_ids):
+mentions = “”
+for uid in user_ids:
+    mentions += f'<a href="tg://user?id={uid}">‎</a>'
+
+return mentions
+async def notify_team(update, team_name):
+if not is_admin(update.effective_user.id):
+await update.message.reply_text(
+“❌ Admin-only command.”
+)
+return
+members = teams.get(team_name, [])
+
+if not members:
+    await update.message.reply_text(
+        f"No {team_name} streamers found."
+    )
+    return
+
+batches = [
+    members[i:i + BATCH_SIZE]
+    for i in range(
+        0,
+        len(members),
+        BATCH_SIZE
+    )
+]
+
+for batch in batches:
+    hidden = build_hidden_mentions(batch)
+
+    await update.message.reply_text(
+        f"📢 {team_name.upper()} STREAMING CALL\n\n"
+        f"Please continue streaming.\n\n"
+        f"{hidden}",
+        parse_mode="HTML"
+    )
+async def notifyspotify(update: Update, context: ContextTypes.DEFAULT_TYPE):
+await notify_team(update, “spotify”)
+async def notifyyoutube(update: Update, context: ContextTypes.DEFAULT_TYPE):
+await notify_team(update, “youtube”)
+async def notifygenie(update: Update, context: ContextTypes.DEFAULT_TYPE):
+await notify_team(update, “genie”)
 
 # =========================
 # FORMAT USER DISPLAY NAME
@@ -161,6 +228,9 @@ async def post_leaderboards(app):
             print("Leaderboard error:", e)
 
         await asyncio.sleep(3600)  # 1 hour
+        
+def is_admin(user_id):
+return user_id in ADMINS
 
 # =========================
 # TOPIC ENFORCEMENT
@@ -214,7 +284,66 @@ app.add_handler(CommandHandler("joingenie", joingenie))
 app.add_handler(CommandHandler("joinyoutube", joinyoutube))
 
 app.add_handler(CommandHandler("checkin", checkin))
+async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+spotify_board = generate_leaderboard(“spotify”)
+youtube_board = generate_leaderboard(“youtube”)
+await update.message.reply_text(
+    spotify_board + "\n\n" + youtube_board
+)
+async def resetleaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+if not is_admin(update.effective_user.id):
+await update.message.reply_text(“❌ Admin-only command.”)
+return
+checkin_count.clear()
+last_checkin_time.clear()
 
+await update.message.reply_text(
+    "✅ Leaderboard reset."
+)
+def build_hidden_mentions(user_ids):
+mentions = “”
+for uid in user_ids:
+    mentions += f'<a href="tg://user?id={uid}">‎</a>'
+
+return mentions
+async def notify_team(update, team_name):
+if not is_admin(update.effective_user.id):
+await update.message.reply_text(
+“❌ Admin-only command.”
+)
+return
+members = teams.get(team_name, [])
+
+if not members:
+    await update.message.reply_text(
+        f"No {team_name} streamers found."
+    )
+    return
+
+batches = [
+    members[i:i + BATCH_SIZE]
+    for i in range(
+        0,
+        len(members),
+        BATCH_SIZE
+    )
+]
+
+for batch in batches:
+    hidden = build_hidden_mentions(batch)
+
+    await update.message.reply_text(
+        f"📢 {team_name.upper()} STREAMING CALL\n\n"
+        f"Please continue streaming.\n\n"
+        f"{hidden}",
+        parse_mode="HTML"
+    )
+async def notifyspotify(update: Update, context: ContextTypes.DEFAULT_TYPE):
+await notify_team(update, “spotify”)
+async def notifyyoutube(update: Update, context: ContextTypes.DEFAULT_TYPE):
+await notify_team(update, “youtube”)
+async def notifygenie(update: Update, context: ContextTypes.DEFAULT_TYPE):
+await notify_team(update, “genie”) 
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, enforce_topics))
 
 app.post_init = on_startup
