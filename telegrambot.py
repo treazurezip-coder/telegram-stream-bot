@@ -29,7 +29,7 @@ ADMINS = {
 
 BATCH_SIZE = 20
 
-COOLDOWN = 60 * 10  # 10 minutes
+COOLDOWN = 60 * 10 # 10 minutes
 
 # =========================
 # TOPIC IDS
