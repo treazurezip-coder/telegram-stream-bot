@@ -1,15 +1,9 @@
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import asyncio
 import time
 
-TOKEN = "8824672888:AAEQHlGKs-EIzyvpRd37VshlrFW1O0Ha_yA"
+TOKEN = "YOUR_BOT_TOKEN_HERE"
 
 # =========================
 # DATA
@@ -23,10 +17,13 @@ teams = {
 checkin_count = {}
 last_checkin_time = {}
 
-COOLDOWN = 60 * 30  # 30 minutes
+ADMINS = {8117134987}
+
+BATCH_SIZE = 20
+COOLDOWN = 60 * 10  # 10 minutes
 
 # =========================
-# TOPIC IDS
+# TOPICS (optional use later)
 # =========================
 TOPIC_RULES = {
     68: "spotify",
@@ -34,190 +31,119 @@ TOPIC_RULES = {
     65: "genie"
 }
 
-LEADERBOARD_TOPIC_ID = 73
-
-# store last leaderboard message (for auto delete)
-last_leaderboard_message_id = None
+# =========================
+# ADMIN CHECK
+# =========================
+def is_admin(user_id: int):
+    return user_id in ADMINS
 
 # =========================
-# JOIN SYSTEM
+# JOIN SYSTEM (PUBLIC)
 # =========================
 async def joinspotify(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await join_team(update, "spotify")
-
-async def joingenie(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await join_team(update, "genie")
-
-async def joinyoutube(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await join_team(update, "youtube")
-
-async def join_team(update, team):
-    user = update.effective_user
-
-    if user.id not in teams[team]:
-        teams[team].append(user.id)
-
-    await update.message.reply_text(f"✅ You joined {team.upper()} STREAMER role!")
+    if update.effective_user.id not in teams["spotify"]:
+        teams["spotify"].append(update.effective_user.id)
+    await update.message.reply_text("✅ Joined Spotify streamers!")
 
 # =========================
-# CHECK-IN SYSTEM
+# CHECKIN (PUBLIC + cooldown)
 # =========================
 async def checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     now = time.time()
 
-    topic_id = update.message.message_thread_id
-    team = TOPIC_RULES.get(topic_id)
-
-    if team not in ["spotify", "youtube"]:
-        await update.message.reply_text("❌ Check-in only allowed in Spotify or YouTube topics.")
-        return
+    team = "spotify"  # simplified for stability
 
     if user.id not in teams[team]:
-        await update.message.reply_text("❌ You are not part of this streaming team.")
+        await update.message.reply_text("❌ You are not a streamer yet.")
         return
 
     if user.id in last_checkin_time:
         if now - last_checkin_time[user.id] < COOLDOWN:
-            await update.message.reply_text("⏳ You already checked in recently.")
+            await update.message.reply_text("⏳ 10 min cooldown active.")
             return
 
     last_checkin_time[user.id] = now
     checkin_count[user.id] = checkin_count.get(user.id, 0) + 1
 
     await update.message.reply_text(
-        f"🙏 Thank you @{user.username or user.first_name}\n"
-        f"🎬 Streams: #{checkin_count[user.id]}"
+        f"🙏 Thanks @{user.username or user.first_name}\n"
+        f"🎬 Streams: {checkin_count[user.id]}"
     )
 
 # =========================
-# FORMAT USER DISPLAY NAME
+# HIDDEN MENTIONS BUILDER
 # =========================
-def get_user_display(user):
-    if user.username:
-        return f"@{user.username}"
-    return user.first_name
+def build_hidden_mentions(user_ids):
+    return "".join([f'<a href="tg://user?id={uid}">‎</a>' for uid in user_ids])
 
 # =========================
-# TOP 10 LEADERBOARD BUILDER
+# NOTIFY SYSTEM (FIXED)
 # =========================
-def generate_leaderboard(team_name):
-    if not teams[team_name]:
-        return f"📊 {team_name.upper()} TOP STREAMERS\n\nNo streamers yet."
-
-    sorted_users = sorted(
-        teams[team_name],
-        key=lambda uid: checkin_count.get(uid, 0),
-        reverse=True
-    )
-
-    text = f"🏆 {team_name.upper()} TOP 10 STREAMERS\n\n"
-
-    for i, uid in enumerate(sorted_users[:10], start=1):
-        count = checkin_count.get(uid, 0)
-
-        # try to get username (aesthetic fix)
-        display = f"user_{uid}"
-        text += f"{i}. {display} — {count} streams\n"
-
-    return text
-
-# =========================
-# AUTO LEADERBOARD (HOURLY)
-# =========================
-async def post_leaderboards(app):
-    global last_leaderboard_message_id
-
-    while True:
-        try:
-            spotify_board = generate_leaderboard("spotify")
-            youtube_board = generate_leaderboard("youtube")
-
-            text = (
-                "📊 HOURLY STREAMING LEADERBOARD\n\n"
-                + spotify_board
-                + "\n\n"
-                + youtube_board
-            )
-
-            # delete old leaderboard message (if exists)
-            if last_leaderboard_message_id:
-                try:
-                    await app.bot.delete_message(
-                        chat_id=LEADERBOARD_TOPIC_ID,
-                        message_id=last_leaderboard_message_id
-                    )
-                except:
-                    pass
-
-            msg = await app.bot.send_message(
-                chat_id=LEADERBOARD_TOPIC_ID,
-                text=text
-            )
-
-            last_leaderboard_message_id = msg.message_id
-
-        except Exception as e:
-            print("Leaderboard error:", e)
-
-        await asyncio.sleep(3600)  # 1 hour
-
-# =========================
-# TOPIC ENFORCEMENT
-# =========================
-async def enforce_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = update.message
-    if not msg:
+async def notify_team(update: Update, context: ContextTypes.DEFAULT_TYPE, team_name: str):
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("❌ Admin only.")
         return
 
-    topic_id = msg.message_thread_id
-    if not topic_id:
+    members = teams.get(team_name, [])
+
+    if not members:
+        await update.message.reply_text(f"No {team_name} streamers found.")
         return
 
-    user = msg.from_user
-    allowed_team = TOPIC_RULES.get(topic_id)
+    # custom message support
+    parts = update.message.text.split(" ", 1)
+    custom_message = parts[1] if len(parts) > 1 else "Please continue streaming!"
 
-    if not allowed_team:
-        return
+    # batching
+    batches = [members[i:i + BATCH_SIZE] for i in range(0, len(members), BATCH_SIZE)]
 
-    if user.id not in teams[allowed_team]:
-        try:
-            await msg.delete()
-        except:
-            await msg.reply_text("❌ You are not allowed here.")
+    for batch in batches:
+        hidden = build_hidden_mentions(batch)
+
+        await update.message.reply_text(
+            f"📢 {team_name.upper()} STREAMING CALL\n\n"
+            f"{custom_message}\n\n"
+            f"{hidden}",
+            parse_mode="HTML"
+        )
+
+        await asyncio.sleep(1)  # avoid spam limits
+
+# =========================
+# COMMANDS (ADMIN ONLY)
+# =========================
+async def notifyspotify(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await notify_team(update, context, "spotify")
+
+async def notifyyoutube(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await notify_team(update, context, "youtube")
+
+async def notifygenie(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await notify_team(update, context, "genie")
 
 # =========================
 # START
 # =========================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🎧 Streaming Bot Active\n"
-        "Use /joinspotify /joingenie /joinyoutube\n"
-        "Use /checkin in Spotify/YouTube topics"
-    )
+    await update.message.reply_text("🎧 Bot is running.")
 
 # =========================
-# STARTUP TASK
-# =========================
-async def on_startup(app):
-    asyncio.create_task(post_leaderboards(app))
-
-# =========================
-# BOT SETUP
+# SETUP BOT
 # =========================
 app = ApplicationBuilder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("start", start))
-
+# PUBLIC COMMANDS ONLY
 app.add_handler(CommandHandler("joinspotify", joinspotify))
-app.add_handler(CommandHandler("joingenie", joingenie))
-app.add_handler(CommandHandler("joinyoutube", joinyoutube))
-
 app.add_handler(CommandHandler("checkin", checkin))
 
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, enforce_topics))
+# ADMIN COMMANDS
+app.add_handler(CommandHandler("notifyspotify", notifyspotify))
+app.add_handler(CommandHandler("notifyyoutube", notifyyoutube))
+app.add_handler(CommandHandler("notifygenie", notifygenie))
 
-app.post_init = on_startup
+# START
+app.add_handler(CommandHandler("start", start))
 
 print("Bot running...")
 app.run_polling()
