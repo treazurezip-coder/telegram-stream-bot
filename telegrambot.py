@@ -97,14 +97,14 @@ async def checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
-spotify_board = generate_leaderboard(“spotify”)
-youtube_board = generate_leaderboard(“youtube”)
+spotify_board = generate_leaderboard("spotify")
+youtube_board = generate_leaderboard("youtube")
 await update.message.reply_text(
     spotify_board + "\n\n" + youtube_board
 )
 async def resetleaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if not is_admin(update.effective_user.id):
-await update.message.reply_text(“❌ Admin-only command.”)
+await update.message.reply_text("❌ Admin-only command.")
 return
 checkin_count.clear()
 last_checkin_time.clear()
@@ -113,7 +113,7 @@ await update.message.reply_text(
     "✅ Leaderboard reset."
 )
 def build_hidden_mentions(user_ids):
-mentions = “”
+mentions = ""
 for uid in user_ids:
     mentions += f'<a href="tg://user?id={uid}">‎</a>'
 
@@ -121,7 +121,7 @@ return mentions
 async def notify_team(update, team_name):
 if not is_admin(update.effective_user.id):
 await update.message.reply_text(
-“❌ Admin-only command.”
+"❌ Admin-only command."
 )
 return
 members = teams.get(team_name, [])
@@ -151,11 +151,11 @@ for batch in batches:
         parse_mode="HTML"
     )
 async def notifyspotify(update: Update, context: ContextTypes.DEFAULT_TYPE):
-await notify_team(update, “spotify”)
+await notify_team(update, "spotify”)
 async def notifyyoutube(update: Update, context: ContextTypes.DEFAULT_TYPE):
-await notify_team(update, “youtube”)
+await notify_team(update, "youtube”)
 async def notifygenie(update: Update, context: ContextTypes.DEFAULT_TYPE):
-await notify_team(update, “genie”)
+await notify_team(update, "genie”)
 
 # =========================
 # FORMAT USER DISPLAY NAME
@@ -197,7 +197,7 @@ async def post_leaderboards(app):
 
     while True:
         try:
-            spotify_board = generate_leaderboard("spotify")
+            spotify_board = generate_leaderboard("spotify") 
             youtube_board = generate_leaderboard("youtube")
 
             text = (
@@ -289,14 +289,14 @@ app.add_handler(CommandHandler("joinyoutube", joinyoutube))
 
 app.add_handler(CommandHandler("checkin", checkin))
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
-spotify_board = generate_leaderboard(“spotify”)
-youtube_board = generate_leaderboard(“youtube”)
+spotify_board = generate_leaderboard("spotify”)
+youtube_board = generate_leaderboard("youtube”)
 await update.message.reply_text(
     spotify_board + "\n\n" + youtube_board
 )
 async def resetleaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if not is_admin(update.effective_user.id):
-await update.message.reply_text(“❌ Admin-only command.”)
+await update.message.reply_text("❌ Admin-only command.”)
 return
 checkin_count.clear()
 last_checkin_time.clear()
@@ -305,7 +305,7 @@ await update.message.reply_text(
     "✅ Leaderboard reset."
 )
 def build_hidden_mentions(user_ids):
-mentions = “”
+mentions = "”
 for uid in user_ids:
     mentions += f'<a href="tg://user?id={uid}">‎</a>'
 
@@ -313,7 +313,7 @@ return mentions
 async def notify_team(update, team_name):
 if not is_admin(update.effective_user.id):
 await update.message.reply_text(
-“❌ Admin-only command.”
+"❌ Admin-only command.”
 )
 return
 members = teams.get(team_name, [])
@@ -343,11 +343,11 @@ for batch in batches:
         parse_mode="HTML"
     )
 async def notifyspotify(update: Update, context: ContextTypes.DEFAULT_TYPE):
-await notify_team(update, “spotify”)
+await notify_team(update, "spotify”)
 async def notifyyoutube(update: Update, context: ContextTypes.DEFAULT_TYPE):
-await notify_team(update, “youtube”)
+await notify_team(update, "youtube”)
 async def notifygenie(update: Update, context: ContextTypes.DEFAULT_TYPE):
-await notify_team(update, “genie”) 
+await notify_team(update, "genie”) 
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, enforce_topics))
 
 app.post_init = on_startup
